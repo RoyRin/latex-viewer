@@ -22,7 +22,7 @@ export default function Home() {
   const [format, setFormat] = useState<ImageFormat>("png");
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const renderRef = useRef<HTMLDivElement>(null);
+  const [renderKey, setRenderKey] = useState(0);
   const previewRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,18 +36,14 @@ export default function Home() {
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [latex]);
+  }, [latex, renderKey]);
+
+  const handleRerender = () => setRenderKey((k) => k + 1);
 
   const exportImage = useCallback(async () => {
-    if (!renderRef.current || error) return null;
+    if (!previewRef.current || error) return null;
 
-    // Render at export size into the hidden div
-    const container = renderRef.current;
-    container.style.fontSize = `${fontSize}px`;
-    katex.render(latex, container, {
-      throwOnError: true,
-      displayMode: true,
-    });
+    const container = previewRef.current;
 
     if (format === "svg") {
       return toSvg(container, { backgroundColor: "#ffffff" });
@@ -55,7 +51,7 @@ export default function Home() {
       // Use 2x scale for crisp PNG
       return toPng(container, { pixelRatio: 2, backgroundColor: "#ffffff" });
     }
-  }, [latex, fontSize, format, error]);
+  }, [fontSize, format, error]);
 
   const handleCopy = async () => {
     const dataUrl = await exportImage();
@@ -131,6 +127,13 @@ export default function Home() {
               </button>
             ))}
           </div>
+
+          <button
+            onClick={handleRerender}
+            className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-500 hover:text-foreground hover:border-foreground transition-colors"
+          >
+            Re-render
+          </button>
         </div>
 
         {/* Live preview */}
@@ -141,19 +144,6 @@ export default function Home() {
             <div ref={previewRef} className="text-black" style={{ fontSize: `${fontSize}px` }} />
           )}
         </div>
-
-        {/* Hidden render target for export */}
-        <div
-          ref={renderRef}
-          className="text-black"
-          style={{
-            position: "absolute",
-            left: "-9999px",
-            top: 0,
-            padding: "16px",
-            background: "#ffffff",
-          }}
-        />
 
         {!error && latex.trim() && (
           <div className="flex justify-center gap-3">
