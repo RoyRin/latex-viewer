@@ -20,6 +20,7 @@ export default function Home() {
   const [latex, setLatex] = useState("\\int_{-\\infty}^{\\infty} e^{-x^2} dx = \\sqrt{\\pi}");
   const [fontSize, setFontSize] = useState<FontSize>("32");
   const [format, setFormat] = useState<ImageFormat>("png");
+  const [transparent, setTransparent] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [renderKey, setRenderKey] = useState(0);
@@ -38,20 +39,23 @@ export default function Home() {
     }
   }, [latex, renderKey]);
 
-  const handleRerender = () => setRenderKey((k) => k + 1);
+  const handleRerender = () => {
+    // Force full remount by bumping key
+    setRenderKey((k) => k + 1);
+  };
 
   const exportImage = useCallback(async () => {
     if (!previewRef.current || error) return null;
 
     const container = previewRef.current;
+    const bg = transparent ? undefined : "#ffffff";
 
     if (format === "svg") {
-      return toSvg(container, { backgroundColor: "#ffffff" });
+      return toSvg(container, { backgroundColor: bg });
     } else {
-      // Use 2x scale for crisp PNG
-      return toPng(container, { pixelRatio: 2, backgroundColor: "#ffffff" });
+      return toPng(container, { pixelRatio: 2, backgroundColor: bg });
     }
-  }, [fontSize, format, error]);
+  }, [format, error, transparent]);
 
   const handleCopy = async () => {
     const dataUrl = await exportImage();
@@ -128,6 +132,16 @@ export default function Home() {
             ))}
           </div>
 
+          <label className="flex items-center gap-1.5 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={transparent}
+              onChange={(e) => setTransparent(e.target.checked)}
+              className="accent-foreground"
+            />
+            <span className="text-gray-500">Transparent</span>
+          </label>
+
           <button
             onClick={handleRerender}
             className="px-3 py-1 rounded border border-gray-300 dark:border-gray-700 text-gray-500 hover:text-foreground hover:border-foreground transition-colors"
@@ -137,11 +151,17 @@ export default function Home() {
         </div>
 
         {/* Live preview */}
-        <div className="bg-white rounded-lg border border-gray-200 dark:border-gray-700 p-6 min-h-[80px] flex items-center justify-center overflow-x-auto">
+        <div
+          className="rounded-lg border border-gray-200 dark:border-gray-700 p-6 min-h-[80px] flex items-center justify-center overflow-x-auto"
+          style={transparent ? {
+            backgroundImage: "repeating-conic-gradient(#d4d4d4 0% 25%, #fff 0% 50%)",
+            backgroundSize: "16px 16px",
+          } : { backgroundColor: "#ffffff" }}
+        >
           {error ? (
             <p className="text-red-500 text-sm font-mono">{error}</p>
           ) : (
-            <div ref={previewRef} className="text-black" style={{ fontSize: `${fontSize}px` }} />
+            <div key={renderKey} ref={previewRef} className="text-black" style={{ fontSize: `${fontSize}px` }} />
           )}
         </div>
 
